@@ -1,5 +1,5 @@
-import pyxp
-image_layers = pyxp.load("hello.xp")
+import pyrexpaint
+image_layers = pyrexpaint.load("hello.xp")
 layer = image_layers[0]
 pos = lambda x, y: x + y * layer.height
 
