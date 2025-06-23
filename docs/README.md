@@ -1,1 +1,1 @@
-pyrexpaint is a python library
+pyrexpaint loads xp files into usable data structures
