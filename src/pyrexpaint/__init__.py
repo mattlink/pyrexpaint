@@ -76,23 +76,30 @@ def load(file_name: str) -> List[ImageLayer]:
     images = []
 
     xp_data = gzip.open(file_name).read()
+    # Load and decompress the .xp file data
     offset = 0
  
     version = load_offset(xp_data[offset:], META_OFFSETS, "version")
+    # Parse file metadata (version and layer count)
     layers = load_offset(xp_data[offset:], META_OFFSETS, "layers")
     offset += META_SIZE
 
     for layer in range(layers):
+    # Process each layer in the file
         image_width = load_offset(xp_data[offset:], LAYER_META_OFFSETS, "width")
+        # Parse layer dimensions
         image_height = load_offset(xp_data[offset:], LAYER_META_OFFSETS, "height")
         offset += LAYER_META_SIZE
 
         num_tiles = image_width * image_height
+        # Parse all tiles in this layer
         tiles: List[Tile] = []
         
         for tile_idx in range(num_tiles):
+            # Calculate offset for this specific tile
             tile_offset = offset + (tile_idx * TILE_SIZE)
             
+            # Extract tile data (character and colors)
             ascii_code = load_offset_raw(xp_data[tile_offset:], TILE_OFFSETS, "ascii")
             fg_r = load_offset(xp_data[tile_offset:], TILE_OFFSETS, "fg_r")
             fg_g = load_offset(xp_data[tile_offset:], TILE_OFFSETS, "fg_g")
@@ -101,6 +108,7 @@ def load(file_name: str) -> List[ImageLayer]:
             bg_g = load_offset(xp_data[tile_offset:], TILE_OFFSETS, "bg_g")
             bg_b = load_offset(xp_data[tile_offset:], TILE_OFFSETS, "bg_b")
 
+        # Move offset past all tiles in this layer
             tiles.append(Tile(ascii_code, fg_r, fg_g, fg_b, bg_r, bg_g, bg_b))
 
         offset += num_tiles * TILE_SIZE
