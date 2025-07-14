@@ -27,7 +27,7 @@ TILE_OFFSETS = {
     "bg_b": (9, 10),
 }
 
-def load_offset_raw(xp_data: bytes, offsets: dict, offset_key: str) -> str:
+def load_offset_raw(xp_data: bytes, offsets: dict, offset_key: str) -> bytes:
     offset = offsets.get(offset_key)
     assert offset, f"No offset found for {offset_key}"
     return xp_data[offset[0]:offset[1]]
@@ -43,13 +43,26 @@ def load_offset(xp_data: bytes, offsets: dict, offset_key: str) -> int:
 
 @dataclass
 class Tile:
-    ascii_code: str
-    fg_r: str
-    fg_g: str
-    fg_b: str
-    bg_r: str
-    bg_g: str
-    bg_b: str
+    """Represents a single tile/character in a REXPaint image.
+    
+    Each tile contains an ASCII character and foreground/background color information.
+    
+    Attributes:
+        ascii_code: Raw bytes representing the ASCII character code
+        fg_r: Red component of foreground color (0-255)
+        fg_g: Green component of foreground color (0-255) 
+        fg_b: Blue component of foreground color (0-255)
+        bg_r: Red component of background color (0-255)
+        bg_g: Green component of background color (0-255)
+        bg_b: Blue component of background color (0-255)
+    """
+    ascii_code: bytes
+    fg_r: int
+    fg_g: int
+    fg_b: int
+    bg_r: int
+    bg_g: int
+    bg_b: int
 
 
 @dataclass
@@ -63,38 +76,42 @@ def load(file_name: str) -> List[ImageLayer]:
     images = []
 
     xp_data = gzip.open(file_name).read()
+    # Load and decompress the .xp file data
+    offset = 0
  
-    version = load_offset(xp_data, META_OFFSETS, "version")
-    layers = load_offset(xp_data, META_OFFSETS, "layers")
-
-    # Reset offset context (we're done parsing metadata)
-    xp_data = xp_data[META_SIZE:] 
+    version = load_offset(xp_data[offset:], META_OFFSETS, "version")
+    # Parse file metadata (version and layer count)
+    layers = load_offset(xp_data[offset:], META_OFFSETS, "layers")
+    offset += META_SIZE
 
     for layer in range(layers):
-        image_width = load_offset(xp_data, LAYER_META_OFFSETS, "width")
-        image_height = load_offset(xp_data, LAYER_META_OFFSETS, "height")
-
-        image = ImageLayer(image_width, image_height, [])
-
-        # Reset layer offset context
-        xp_data = xp_data[LAYER_META_SIZE:]
+    # Process each layer in the file
+        image_width = load_offset(xp_data[offset:], LAYER_META_OFFSETS, "width")
+        # Parse layer dimensions
+        image_height = load_offset(xp_data[offset:], LAYER_META_OFFSETS, "height")
+        offset += LAYER_META_SIZE
 
         num_tiles = image_width * image_height
-        for tile in range(num_tiles):
+        # Parse all tiles in this layer
+        tiles: List[Tile] = []
+        
+        for tile_idx in range(num_tiles):
+            # Calculate offset for this specific tile
+            tile_offset = offset + (tile_idx * TILE_SIZE)
             
-            ascii_code = load_offset_raw(xp_data, TILE_OFFSETS, "ascii")
-            fg_r = load_offset(xp_data, TILE_OFFSETS, "fg_r")
-            fg_g = load_offset(xp_data, TILE_OFFSETS, "fg_g")
-            fg_b = load_offset(xp_data, TILE_OFFSETS, "fg_b")
-            bg_r = load_offset(xp_data, TILE_OFFSETS, "bg_r")
-            bg_g = load_offset(xp_data, TILE_OFFSETS, "bg_g")
-            bg_b = load_offset(xp_data, TILE_OFFSETS, "bg_b")
+            # Extract tile data (character and colors)
+            ascii_code = load_offset_raw(xp_data[tile_offset:], TILE_OFFSETS, "ascii")
+            fg_r = load_offset(xp_data[tile_offset:], TILE_OFFSETS, "fg_r")
+            fg_g = load_offset(xp_data[tile_offset:], TILE_OFFSETS, "fg_g")
+            fg_b = load_offset(xp_data[tile_offset:], TILE_OFFSETS, "fg_b")
+            bg_r = load_offset(xp_data[tile_offset:], TILE_OFFSETS, "bg_r")
+            bg_g = load_offset(xp_data[tile_offset:], TILE_OFFSETS, "bg_g")
+            bg_b = load_offset(xp_data[tile_offset:], TILE_OFFSETS, "bg_b")
 
-            image.tiles.append(Tile(ascii_code, fg_r, fg_g, fg_b, bg_r, bg_g, bg_b))
+        # Move offset past all tiles in this layer
+            tiles.append(Tile(ascii_code, fg_r, fg_g, fg_b, bg_r, bg_g, bg_b))
 
-            # Reset tile offset context
-            xp_data = xp_data[TILE_SIZE:]
-
-        images.append(image)
+        offset += num_tiles * TILE_SIZE
+        images.append(ImageLayer(image_width, image_height, tiles))
 
     return images
