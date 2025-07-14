@@ -43,6 +43,19 @@ def load_offset(xp_data: bytes, offsets: dict, offset_key: str) -> int:
 
 @dataclass
 class Tile:
+    """Represents a single tile/character in a REXPaint image.
+    
+    Each tile contains an ASCII character and foreground/background color information.
+    
+    Attributes:
+        ascii_code: Raw bytes representing the ASCII character code
+        fg_r: Red component of foreground color (0-255)
+        fg_g: Green component of foreground color (0-255) 
+        fg_b: Blue component of foreground color (0-255)
+        bg_r: Red component of background color (0-255)
+        bg_g: Green component of background color (0-255)
+        bg_b: Blue component of background color (0-255)
+    """
     ascii_code: bytes
     fg_r: int
     fg_g: int
